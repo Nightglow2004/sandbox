@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+
 import {
   createProject,
   getProjects,
@@ -61,13 +62,31 @@ function App() {
       return JSON.parse(savedFiles);
     }
 
-    // DEFAULT FILES
     return defaultFiles;
   });
 
+  // PROJECT STATE
   const [projects, setProjects] = useState([]);
+
   const [currentProjectId, setCurrentProjectId] = useState(null);
 
+  const [currentProjectName, setCurrentProjectName] =
+    useState("Untitled Project");
+
+  // ACTIVE FILE
+  const [activeFile, setActiveFile] = useState("/src/index.html");
+
+  // OPEN TABS
+  const [openTabs, setOpenTabs] = useState(["/src/index.html"]);
+
+  // FOLDER STATE
+  const [openFolders, setOpenFolders] = useState({
+    src: true,
+    styles: true,
+    scripts: true,
+  });
+
+  // LOAD PROJECTS
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -82,25 +101,12 @@ function App() {
     fetchProjects();
   }, []);
 
-  // CURRENT OPEN FILE
-  const [activeFile, setActiveFile] = useState("/src/index.html");
-
-  const [currentProjectName, setCurrentProjectName] =
-    useState("Untitled Project");
-
-  // FOLDER OPEN/CLOSE STATE
-  const [openFolders, setOpenFolders] = useState({
-    src: true,
-    styles: true,
-    scripts: true,
-  });
-
-  // AUTO SAVE FILES
+  // LOCAL STORAGE SAVE
   useEffect(() => {
     localStorage.setItem("sandbox-files", JSON.stringify(files));
   }, [files]);
 
-  // DETECT LANGUAGE
+  // LANGUAGE DETECTION
   const getLanguage = () => {
     if (activeFile.endsWith(".html")) {
       return "html";
@@ -117,23 +123,45 @@ function App() {
     return "plaintext";
   };
 
-  // BUILD LIVE PREVIEW DOCUMENT
-  // GET HTML FILE
+  // OPEN FILE
+  const openFile = (filePath) => {
+    setActiveFile(filePath);
+
+    if (!openTabs.includes(filePath)) {
+      setOpenTabs([...openTabs, filePath]);
+    }
+  };
+
+  // CLOSE TAB
+  const closeTab = (e, filePath) => {
+    e.stopPropagation();
+
+    // PREVENT CLOSING LAST TAB
+    if (openTabs.length === 1) {
+      return;
+    }
+
+    const updatedTabs = openTabs.filter((tab) => tab !== filePath);
+
+    setOpenTabs(updatedTabs);
+
+    // ACTIVE TAB FALLBACK
+    if (activeFile === filePath) {
+      setActiveFile(updatedTabs[0]);
+    }
+  };
+
+  // BUILD PREVIEW
   const htmlFile = Object.keys(files).find((file) => file.endsWith(".html"));
 
-  // GET ALL CSS FILES
   const cssFiles = Object.keys(files).filter((file) => file.endsWith(".css"));
 
-  // GET ALL JS FILES
   const jsFiles = Object.keys(files).filter((file) => file.endsWith(".js"));
 
-  // COMBINE CSS
-  const combinedCSS = cssFiles.map((file) => files[file]).join("\n");
+  const combinedCSS = cssFiles.map((file) => files[file] || "").join("\\n");
 
-  // COMBINE JS
-  const combinedJS = jsFiles.map((file) => files[file]).join("\n");
+  const combinedJS = jsFiles.map((file) => files[file] || "").join("\\n");
 
-  // BUILD LIVE DOCUMENT
   const srcDoc = `
 ${files[htmlFile] || ""}
 
@@ -148,7 +176,6 @@ ${combinedJS}
 
   // DELETE FILE
   const deleteFile = (fileToDelete) => {
-    // PREVENT MAIN HTML DELETE
     if (fileToDelete === "/src/index.html") {
       alert("Cannot delete main HTML file.");
 
@@ -163,10 +190,43 @@ ${combinedJS}
 
     setFiles(updatedFiles);
 
-    // FALLBACK ACTIVE FILE
+    // REMOVE CLOSED TAB
+    setOpenTabs(openTabs.filter((tab) => tab !== fileToDelete));
+
+    // ACTIVE FILE FALLBACK
     if (activeFile === fileToDelete) {
       setActiveFile("/src/index.html");
     }
+  };
+
+  const renameFile = (oldPath) => {
+    const newPath = prompt("Enter new file path:", oldPath);
+
+    if (!newPath) return;
+
+    // PREVENT DUPLICATES
+    if (files[newPath]) {
+      alert("File already exists!");
+
+      return;
+    }
+
+    const updatedFiles = {
+      ...files,
+    };
+
+    updatedFiles[newPath] = updatedFiles[oldPath];
+
+    delete updatedFiles[oldPath];
+    setFiles(updatedFiles);
+
+    // UPDATE ACTIVE FILE
+    if (activeFile === oldPath) {
+      setActiveFile(newPath);
+    }
+
+    // UPDATE OPEN TABS
+    setOpenTabs(openTabs.map((tab) => (tab === oldPath ? newPath : tab)));
   };
 
   // RESET SANDBOX
@@ -176,9 +236,10 @@ ${combinedJS}
     window.location.reload();
   };
 
+  // SAVE PROJECT
   const handleSaveProject = async () => {
     try {
-      // UPDATE EXISTING PROJECT
+      // UPDATE PROJECT
       if (currentProjectId) {
         const updatedProject = await updateProject(currentProjectId, {
           files,
@@ -192,14 +253,12 @@ ${combinedJS}
 
         setCurrentProjectName(updatedProject.name);
 
-        console.log("Project Updated:", updatedProject);
-
         alert("Project updated!");
 
         return;
       }
 
-      // CREATE NEW PROJECT
+      // CREATE PROJECT
       const projectName = prompt("Enter project name:");
 
       if (!projectName) return;
@@ -217,8 +276,6 @@ ${combinedJS}
 
       setCurrentProjectName(savedProject.name);
 
-      console.log("Project Created:", savedProject);
-
       alert("Project created!");
     } catch (error) {
       console.error("Save failed:", error);
@@ -227,19 +284,22 @@ ${combinedJS}
     }
   };
 
+  // LOAD PROJECT
   const handleLoadProject = async (id) => {
     try {
       const project = await getProjectById(id);
 
       setFiles(project.files);
 
-      setActiveFile(Object.keys(project.files)[0]);
+      const firstFile = Object.keys(project.files)[0];
+
+      setActiveFile(firstFile);
+
+      setOpenTabs([firstFile]);
 
       setCurrentProjectId(id);
 
       setCurrentProjectName(project.name);
-
-      console.log("Project Loaded:", project);
 
       alert("Project loaded!");
     } catch (error) {
@@ -249,10 +309,13 @@ ${combinedJS}
     }
   };
 
+  // NEW PROJECT
   const handleNewProject = () => {
     setFiles(defaultFiles);
 
     setActiveFile("/src/index.html");
+
+    setOpenTabs(["/src/index.html"]);
 
     setCurrentProjectId(null);
 
@@ -260,11 +323,10 @@ ${combinedJS}
 
     localStorage.removeItem("sandbox-files");
 
-    console.log("New project started");
-
     alert("New project created!");
   };
 
+  // DELETE PROJECT
   const handleDeleteProject = async (id) => {
     try {
       const confirmed = window.confirm("Delete this project?");
@@ -277,13 +339,15 @@ ${combinedJS}
         prevProjects.filter((project) => project._id !== id),
       );
 
-      // RESET IF CURRENT PROJECT DELETED
+      // RESET IF ACTIVE PROJECT DELETED
       if (currentProjectId === id) {
         setCurrentProjectId(null);
 
         setCurrentProjectName("Untitled Project");
 
         setFiles(defaultFiles);
+
+        setOpenTabs(["/src/index.html"]);
 
         setActiveFile("/src/index.html");
       }
@@ -296,7 +360,7 @@ ${combinedJS}
     }
   };
 
-  // GROUP FILES INTO FOLDERS
+  // GROUP FILES
   const groupedFiles = {};
 
   Object.keys(files).forEach((filePath) => {
@@ -320,7 +384,6 @@ ${combinedJS}
     <div
       style={{
         height: "100vh",
-
         display: "grid",
 
         gridTemplateColumns: "250px minmax(300px, 45%) minmax(300px, 55%)",
@@ -328,7 +391,7 @@ ${combinedJS}
         overflow: "hidden",
       }}
     >
-      {/* FILE PANEL */}
+      {/* SIDEBAR */}
       <div
         style={{
           borderRight: "1px solid gray",
@@ -340,9 +403,9 @@ ${combinedJS}
           overflowY: "auto",
         }}
       >
-        <h3>FILES</h3>
         <h3>PROJECTS</h3>
 
+        {/* PROJECT LIST */}
         <div
           style={{
             marginBottom: "20px",
@@ -355,8 +418,11 @@ ${combinedJS}
               key={project._id}
               style={{
                 display: "flex",
+
                 justifyContent: "space-between",
+
                 alignItems: "center",
+
                 padding: "8px",
 
                 background: currentProjectId === project._id ? "#333" : "#ddd",
@@ -370,6 +436,7 @@ ${combinedJS}
                 onClick={() => handleLoadProject(project._id)}
                 style={{
                   cursor: "pointer",
+
                   flex: 1,
                 }}
               >
@@ -380,9 +447,13 @@ ${combinedJS}
                 onClick={() => handleDeleteProject(project._id)}
                 style={{
                   background: "red",
+
                   color: "white",
+
                   border: "none",
+
                   cursor: "pointer",
+
                   padding: "2px 8px",
                 }}
               >
@@ -391,36 +462,51 @@ ${combinedJS}
             </div>
           ))}
         </div>
+
+        {/* BUTTONS */}
         <button
           onClick={handleNewProject}
           style={{
             marginBottom: "10px",
+
             padding: "8px",
+
             cursor: "pointer",
+
             width: "100%",
+
             background: "#22aa44",
+
             color: "white",
+
             border: "none",
           }}
         >
           New Project
         </button>
+
         <button
           onClick={handleSaveProject}
           style={{
             marginBottom: "10px",
+
             padding: "8px",
+
             cursor: "pointer",
+
             width: "100%",
+
             background: "#0078ff",
+
             color: "white",
+
             border: "none",
           }}
         >
           Save Project
         </button>
 
-        {/* CREATE FILE */}
+        {/* NEW FILE */}
         <button
           onClick={() => {
             const fileName = prompt(
@@ -429,7 +515,7 @@ ${combinedJS}
 
             if (!fileName) return;
 
-            // PREVENT OVERWRITE
+            // PREVENT DUPLICATE
             if (files[fileName]) {
               alert("File already exists!");
 
@@ -441,38 +527,49 @@ ${combinedJS}
               [fileName]: "",
             });
 
-            setActiveFile(fileName);
+            openFile(fileName);
           }}
           style={{
             marginBottom: "10px",
+
             padding: "8px",
+
             cursor: "pointer",
+
             width: "100%",
           }}
         >
           + New File
         </button>
 
-        {/* RESET BUTTON */}
+        {/* RESET */}
         <button
           onClick={resetSandbox}
           style={{
             marginBottom: "20px",
+
             padding: "8px",
+
             cursor: "pointer",
+
             width: "100%",
+
             background: "#222",
+
             color: "white",
+
             border: "none",
           }}
         >
           Reset Sandbox
         </button>
 
-        {/* FOLDER TREE */}
+        {/* FILE TREE */}
+        <h3>FILES</h3>
+
         {Object.keys(groupedFiles).map((folder) => (
           <div key={folder}>
-            {/* FOLDER HEADER */}
+            {/* FOLDER */}
             <div
               onClick={() => {
                 setOpenFolders({
@@ -483,9 +580,13 @@ ${combinedJS}
               }}
               style={{
                 fontWeight: "bold",
+
                 cursor: "pointer",
+
                 padding: "8px",
+
                 background: "#ddd",
+
                 marginTop: "10px",
               }}
             >
@@ -512,24 +613,38 @@ ${combinedJS}
                     color: activeFile === file.fullPath ? "white" : "black",
                   }}
                 >
-                  {/* FILE NAME */}
                   <span
-                    onClick={() => setActiveFile(file.fullPath)}
+                    onClick={() => openFile(file.fullPath)}
                     style={{
                       cursor: "pointer",
                     }}
                   >
                     {file.fileName}
                   </span>
-
-                  {/* DELETE */}
+                  <button
+                    onClick={() => renameFile(file.fullPath)}
+                    style={{
+                      background: "orange",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "2px 6px",
+                      marginRight: "5px",
+                    }}
+                  >
+                    ✎
+                  </button>
                   <button
                     onClick={() => deleteFile(file.fullPath)}
                     style={{
                       background: "red",
+
                       color: "white",
+
                       border: "none",
+
                       cursor: "pointer",
+
                       padding: "2px 6px",
                     }}
                   >
@@ -547,14 +662,83 @@ ${combinedJS}
           borderRight: "1px solid gray",
 
           overflow: "hidden",
+
+          display: "flex",
+
+          flexDirection: "column",
         }}
       >
-        {/* ACTIVE FILE HEADER */}
+        {/* TAB BAR */}
+        <div
+          style={{
+            display: "flex",
+
+            background: "#252526",
+
+            borderBottom: "1px solid #444",
+
+            overflowX: "auto",
+          }}
+        >
+          {openTabs.map((tab) => (
+            <div
+              key={tab}
+              onClick={() => setActiveFile(tab)}
+              style={{
+                display: "flex",
+
+                alignItems: "center",
+
+                padding: "8px 12px",
+
+                cursor: "pointer",
+
+                background: activeFile === tab ? "#1e1e1e" : "#2d2d2d",
+
+                color: "white",
+
+                borderRight: "1px solid #444",
+
+                minWidth: "120px",
+              }}
+            >
+              <span
+                style={{
+                  flex: 1,
+                }}
+              >
+                {tab.split("/").pop()}
+              </span>
+
+              <button
+                onClick={(e) => closeTab(e, tab)}
+                style={{
+                  marginLeft: "8px",
+
+                  background: "transparent",
+
+                  color: "#aaa",
+
+                  border: "none",
+
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* HEADER */}
         <div
           style={{
             padding: "10px",
+
             background: "#1e1e1e",
+
             color: "white",
+
             borderBottom: "1px solid #444",
           }}
         >
@@ -562,6 +746,7 @@ ${combinedJS}
             <div
               style={{
                 fontWeight: "bold",
+
                 marginBottom: "5px",
               }}
             >
@@ -571,6 +756,7 @@ ${combinedJS}
             <div
               style={{
                 fontSize: "14px",
+
                 opacity: 0.8,
               }}
             >
@@ -579,8 +765,9 @@ ${combinedJS}
           </div>
         </div>
 
+        {/* MONACO */}
         <Editor
-          height="95vh"
+          height="100%"
           language={getLanguage()}
           value={files[activeFile] || ""}
           onChange={(value = "") => {
@@ -594,7 +781,7 @@ ${combinedJS}
         />
       </div>
 
-      {/* PREVIEW PANEL */}
+      {/* PREVIEW */}
       <div
         style={{
           height: "100vh",

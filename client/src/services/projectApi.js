@@ -1,45 +1,45 @@
-const API_URL = "http://localhost:5000/api/projects"
+const API_URL = "https://sandbox-gnzf.onrender.com"
 
 export const createProject = async (projectData) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(projectData),
-  })
+    const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(projectData),
+    })
 
-  return response.json()
+    return response.json()
 }
 
 export const getProjects = async () => {
-  const response = await fetch(API_URL)
+    const response = await fetch(API_URL)
 
-  return response.json()
+    return response.json()
 }
 
 export const getProjectById = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`)
+    const response = await fetch(`${API_URL}/${id}`)
 
-  return response.json()
+    return response.json()
 }
 
 export const updateProject = async (id, projectData) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(projectData),
-  })
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(projectData),
+    })
 
-  return response.json()
+    return response.json()
 }
 
 export const deleteProject = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-  })
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+    })
 
-  return response.json()
+    return response.json()
 }
