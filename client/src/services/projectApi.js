@@ -1,4 +1,4 @@
-const API_URL = "https://sandbox-gnzf.onrender.com"
+const API_URL = "https://sandbox-gnzf.onrender.com/api/projects"
 
 export const createProject = async (projectData) => {
     const response = await fetch(API_URL, {
