@@ -1,0 +1,52 @@
+@baseUrl = http://localhost:5000
+@projectId = 6a108620cda602fc75482565
+
+###
+
+### HEALTH CHECK
+GET {{baseUrl}}
+
+###
+
+### CREATE PROJECT
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+
+{
+  "name": "Sandbox Project",
+  "files": {
+    "/src/index.html": {
+      "content": "<h1>Hello Sandbox</h1>"
+    }
+  }
+}
+
+###
+
+### GET ALL PROJECTS
+GET {{baseUrl}}/api/projects
+
+###
+
+### GET SINGLE PROJECT
+GET {{baseUrl}}/api/projects/{{projectId}}
+
+###
+
+### UPDATE PROJECT
+PUT {{baseUrl}}/api/projects/{{projectId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Project",
+  "files": {
+    "/src/index.html": {
+      "content": "<h1>Updated</h1>"
+    }
+  }
+}
+
+###
+
+### DELETE PROJECT
+DELETE {{baseUrl}}/api/projects/{{projectId}}
