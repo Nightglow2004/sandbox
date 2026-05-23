@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { executeProject } from "./runtime/runtimeManager";
+import { getWebContainer } from "./runtime/webcontainerRuntime";
+import { mountFiles } from "./runtime/webcontainerRuntime";
+import { startReactDevServer } from "./runtime/webcontainerRuntime";
 
 import {
   createProject,
@@ -73,6 +77,19 @@ function App() {
   const [currentProjectName, setCurrentProjectName] =
     useState("Untitled Project");
 
+  const [reactUrl, setReactUrl] = useState("");
+
+  const [srcDoc, setSrcDoc] = useState("");
+  useEffect(() => {
+    const buildPreview = async () => {
+      const result = await executeProject(files, "vanilla");
+
+      setSrcDoc(result);
+    };
+
+    buildPreview();
+  }, [files]);
+
   // ACTIVE FILE
   const [activeFile, setActiveFile] = useState("/src/index.html");
 
@@ -105,6 +122,36 @@ function App() {
   useEffect(() => {
     localStorage.setItem("sandbox-files", JSON.stringify(files));
   }, [files]);
+
+  useEffect(() => {
+    const initContainer = async () => {
+      const wc = await getWebContainer();
+
+      console.log("WebContainer Booted:", wc);
+    };
+
+    initContainer();
+  }, []);
+
+  useEffect(() => {
+    const testMount = async () => {
+      await mountFiles(files);
+    };
+
+    testMount();
+  }, []);
+
+  useEffect(() => {
+    const handler = (event) => {
+      setReactUrl(event.detail.url);
+    };
+
+    window.addEventListener("sandbox-ready", handler);
+
+    return () => {
+      window.removeEventListener("sandbox-ready", handler);
+    };
+  }, []);
 
   // LANGUAGE DETECTION
   const getLanguage = () => {
@@ -150,29 +197,6 @@ function App() {
       setActiveFile(updatedTabs[0]);
     }
   };
-
-  // BUILD PREVIEW
-  const htmlFile = Object.keys(files).find((file) => file.endsWith(".html"));
-
-  const cssFiles = Object.keys(files).filter((file) => file.endsWith(".css"));
-
-  const jsFiles = Object.keys(files).filter((file) => file.endsWith(".js"));
-
-  const combinedCSS = cssFiles.map((file) => files[file] || "").join("\\n");
-
-  const combinedJS = jsFiles.map((file) => files[file] || "").join("\\n");
-
-  const srcDoc = `
-${files[htmlFile] || ""}
-
-<style>
-${combinedCSS}
-</style>
-
-<script>
-${combinedJS}
-</script>
-`;
 
   // DELETE FILE
   const deleteFile = (fileToDelete) => {
@@ -403,6 +427,7 @@ ${combinedJS}
           overflowY: "auto",
         }}
       >
+        <button onClick={startReactDevServer}>Start React Runtime</button>
         <h3>PROJECTS</h3>
 
         {/* PROJECT LIST */}
@@ -789,7 +814,8 @@ ${combinedJS}
         }}
       >
         <iframe
-          srcDoc={srcDoc}
+          src={reactUrl || undefined}
+          srcDoc={!reactUrl ? srcDoc : undefined}
           title="preview"
           sandbox="allow-scripts"
           width="100%"
