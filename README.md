@@ -9,30 +9,10 @@ A browser-based IDE and developer sandbox built with the MERN stack, featuring a
 Add your deployed URLs here:
 
 ```txt id="1w9ft6"
-Frontend: https://your-vercel-url.vercel.app
+Frontend: https://sandbox-coral-mu.vercel.app/
 
-Backend: https://your-render-url.onrender.com
+Backend: https://sandbox-gnzf.onrender.com
 ```
-
----
-
-# Video Walkthrough
-
-Add your walkthrough link here:
-
-```txt id="8xj0cn"
-https://your-video-link.com
-```
-
-The walkthrough covers:
-
-* Architecture decisions
-* Runtime system design
-* Virtual filesystem implementation
-* Live preview execution
-* Persistence strategy
-* AI-assisted development workflow
-* Tradeoffs and future improvements
 
 ---
 
@@ -238,8 +218,7 @@ AI tools were heavily leveraged to accelerate implementation while maintaining f
 Tools used:
 
 * ChatGPT
-* Cursor AI
-
+  
 AI-assisted areas:
 
 * runtime architecture brainstorming
