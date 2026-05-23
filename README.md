@@ -319,6 +319,23 @@ This tradeoff was intentional and documented.
 
 # Current Limitations
 
+## Deployment Limitations
+
+The backend is deployed on Render's free tier, which introduces some platform-related constraints:
+
+- cold start delays after inactivity
+- slower initial API response times
+- limited compute/runtime resources
+- potential request throttling on free infrastructure
+
+These limitations are infrastructure-related rather than application architecture issues.
+
+For production usage, the backend would ideally be deployed using:
+- paid Render instances
+- Railway
+- Fly.io
+- AWS/GCP/Azure infrastructure
+
 ## Not Yet Fully Supported
 
 * npm package installation
